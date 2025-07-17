@@ -1,7 +1,5 @@
 from importlib.metadata import version
 
-from . import pl, pp, tl
-
-__all__ = ["pl", "pp", "tl"]
+from Perturb2StateModel import Perturb2StateModel, score_predictions
 
 __version__ = version("pert2state_model")
