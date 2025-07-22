@@ -347,6 +347,35 @@ class Perturb2StateModel:
         all_preds["pred_sem"] = all_preds.sem(axis=1)
         return all_preds[["pred_mean", "pred_sem"]]
 
+    def get_effect_per_gene(self, X, gene, subset_regulators=None, return_splits=False):
+        """Get predicted effect of single perturbations on single genes."""
+        all_preds = pd.DataFrame()
+        gene_ix = X.index.get_loc(gene)
+
+        for mod, pca, scaler in zip(self.models, self.pcas, self.scalers, strict=False):
+            if pca is not None:
+                coefs = np.matmul(pca.components_.T, mod.coef_)
+            else:
+                coefs = mod.coef_
+            # Convert X to numpy array to avoid feature names warning
+            X_array = X.values if hasattr(X, "values") else X
+            # Scale the data
+            X_scaled = scaler.transform(X_array)
+            if subset_regulators is not None:
+                subset_ixs = [i for i, col in enumerate(X.columns) if col in subset_regulators]
+                preds = pd.DataFrame(X_scaled[gene_ix, subset_ixs] * coefs[subset_ixs], index=X.columns[subset_ixs])
+            else:
+                preds = pd.DataFrame(X_scaled[gene_ix, :] * coefs, index=X.columns)
+            all_preds = pd.concat([all_preds, preds], axis=1)
+
+        if return_splits:
+            return all_preds
+
+        # Calculate mean and sem across models
+        all_preds["pred_mean"] = all_preds.mean(axis=1)
+        all_preds["pred_sem"] = all_preds.sem(axis=1)
+        return all_preds[["pred_mean", "pred_sem"]]
+
     def get_r2(self, X, y):
         """Calculate R² values for each feature's contribution to the prediction.
 
@@ -396,12 +425,9 @@ class Perturb2StateModel:
         """
         residuals = self.get_residuals(X, y)
 
-        # Get mean predictions across models
-        y_pred = self.get_prediction(X)["pred_mean"]
-
         fig, ax = plt.subplots(figsize=(8, 6))
         ax.errorbar(
-            y_pred,
+            y,
             residuals["residual_mean"],
             yerr=residuals["residual_sem"],
             fmt="o",
@@ -425,7 +451,7 @@ class Perturb2StateModel:
             for idx in top_idx:
                 ax.annotate(
                     str(idx),
-                    (y_pred[idx], residuals.loc[idx, "residual_mean"]),
+                    (y[idx], residuals.loc[idx, "residual_mean"]),
                     xytext=(5, 5),
                     textcoords="offset points",
                     fontsize=11,
@@ -441,6 +467,7 @@ class Perturb2StateModel:
         plot_metric: str = None,
         ax: plt.Axes = None,
         return_ax: bool = False,
+        split_id: int = None,
     ) -> plt.Figure | plt.Axes:
         """Plot actual vs predicted values using mean predictions across models.
 
@@ -451,29 +478,58 @@ class Perturb2StateModel:
             plot_metric: Optional metric name to display in plot title (e.g. 'r2', 'mse')
             ax: Optional matplotlib Axes object to plot on
             return_ax: If True, return the Axes object instead of Figure
+            split_id: Optional integer specifying which train/test split to plot.
+                     If None, plots mean predictions across all splits.
 
         Returns
         -------
             matplotlib Figure object containing the plot or Axes object if return_ax=True
         """
-        # Get mean predictions and standard errors across models
-        predictions = self.get_prediction(X)
-        y_pred = predictions["pred_mean"]
-        y_pred_sem = predictions["pred_sem"]
-
         if ax is None:
             fig, ax = plt.subplots(figsize=(8, 6))
 
-        ax.errorbar(
-            y, y_pred, yerr=y_pred_sem, fmt="o", markersize=2, alpha=0.5, elinewidth=1, capsize=0, color="black"
-        )
+        if split_id is not None:
+            # Plot single split with train/test colored differently
+            train_ixs, test_ixs = self.split_ixs[split_id]
+            split_predictions = self.get_prediction(X, return_splits=True).iloc[:, split_id]
 
-        # # Add diagonal line representing perfect prediction
-        # lims = [
-        #     min(min(y), min(y_pred)),
-        #     max(max(y), max(y_pred))
-        # ]
-        # ax.plot(lims, lims, '--', color='darkgrey')
+            # Plot training points
+            ax.scatter(
+                y.iloc[train_ixs],
+                split_predictions.iloc[train_ixs],
+                s=2,
+                alpha=0.5,
+                color="black",
+                label="Training",
+            )
+            # Plot test points
+            ax.scatter(
+                y.iloc[test_ixs],
+                split_predictions.iloc[test_ixs],
+                s=2,
+                alpha=0.5,
+                color="red",
+                label="Test",
+            )
+            ax.legend()
+
+        else:
+            # Plot mean predictions with error bars
+            predictions = self.get_prediction(X)
+            y_pred = predictions["pred_mean"]
+            y_pred_sem = predictions["pred_sem"]
+
+            ax.errorbar(
+                y,
+                y_pred,
+                yerr=y_pred_sem,
+                fmt="o",
+                markersize=2,
+                alpha=0.5,
+                elinewidth=1,
+                capsize=0,
+                color="black",
+            )
 
         ax.set_xlabel("Actual DE estimate", fontsize=12)
         ax.set_ylabel("Predicted DE estimate", fontsize=12)
@@ -481,21 +537,27 @@ class Perturb2StateModel:
 
         if annotate_top_n > 0:
             # Get indices of top and bottom n values
-            sorted_idx = y_pred.abs().sort_values(ascending=False).index
+            y_to_sort = y_pred if split_id is None else split_predictions
+            sorted_idx = y_to_sort.abs().sort_values(ascending=False).index
             top_idx = sorted_idx[:annotate_top_n]
 
             # Add annotations
             for idx in top_idx:
-                ax.annotate(idx, (y[idx], y_pred[idx]), xytext=(5, 5), textcoords="offset points", fontsize=11)
+                y_val = y_pred[idx] if split_id is None else split_predictions[idx]
+                ax.annotate(idx, (y[idx], y_val), xytext=(5, 5), textcoords="offset points", fontsize=11)
 
         if plot_metric is not None:
             # Get evaluation metrics
-            eval_summary = self.summarize_eval()
             metric_col = f"test_{plot_metric}"
+            eval_summary = self.summarize_eval()
             if metric_col in eval_summary.columns:
-                metric_mean = eval_summary[metric_col].mean()
-                metric_sem = eval_summary[f"{metric_col}_se"].mean()
-                ax.set_title(f"Test {plot_metric}: {metric_mean:.3f} ± {metric_sem:.3f}", fontsize=12)
+                if split_id is not None:
+                    metric_val = self.eval.iloc[split_id][metric_col]
+                    ax.set_title(f"Test {plot_metric} (split {split_id}): {metric_val:.3f}", fontsize=12)
+                else:
+                    metric_mean = eval_summary[metric_col].mean()
+                    metric_sem = eval_summary[f"{metric_col}_se"].mean()
+                    ax.set_title(f"Test {plot_metric}: {metric_mean:.3f} ± {metric_sem:.3f}", fontsize=12)
 
         if return_ax:
             return ax
