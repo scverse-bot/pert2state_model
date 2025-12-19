@@ -6,7 +6,7 @@ from scipy.stats import kendalltau, pearsonr, spearmanr
 from sklearn.decomposition import TruncatedSVD
 from sklearn.linear_model import ElasticNet, ElasticNetCV
 from sklearn.metrics import r2_score
-from sklearn.model_selection import RepeatedKFold
+from sklearn.model_selection import RepeatedKFold, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 
 
@@ -175,6 +175,7 @@ class Perturb2StateModel:
         y: pd.Series,
         model_id: str,
         frac_top_hvgs=None,
+        stratify_y=False,
     ) -> pd.DataFrame:
         """Fit model.
 
@@ -186,6 +187,7 @@ class Perturb2StateModel:
             model_id: String identifier for the model, used to track results across different conditions/experiments.
             frac_top_hvgs: Optional float between 0 and 1. If provided, uses only this fraction of genes with highest
                           mean absolute expression for training. If None, uses all genes.
+            stratify_y: If True, use StratifiedKFold instead of RepeatedKFold for cross-validation.
 
         Returns
         -------
@@ -245,8 +247,17 @@ class Perturb2StateModel:
             self.split_ixs.append((all_idx, all_idx))
         else:
             # Initialize cross-validation
-            rkf = RepeatedKFold(n_splits=self.n_splits, n_repeats=self.n_repeats, random_state=self.random_state)
-            for fold_idx, (train_idx, test_idx) in enumerate(rkf.split(X_filtered)):
+            if stratify_y:
+                # For continuous targets, we can't use StratifiedKFold directly
+                # Instead, we'll use RepeatedKFold but with stratification based on binned values
+                y_binned = pd.cut(y_filtered, bins=10, labels=False)
+                kf = StratifiedKFold(n_splits=self.n_splits, random_state=self.random_state, shuffle=True)
+                splits = kf.split(X_filtered, y_binned)
+            else:
+                rkf = RepeatedKFold(n_splits=self.n_splits, n_repeats=self.n_repeats, random_state=self.random_state)
+                splits = rkf.split(X_filtered)
+
+            for fold_idx, (train_idx, test_idx) in enumerate(splits):
                 result = self.evaluate_single_split(
                     X_filtered,
                     y_filtered,

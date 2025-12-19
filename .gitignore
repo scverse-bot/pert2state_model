@@ -1,3 +1,8 @@
+.vscode
+
+# Data files
+docs/data/
+
 # Temp files
 .DS_Store
 *~

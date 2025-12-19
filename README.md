@@ -1,19 +1,19 @@
 # pert2state_model
 
-[![Tests][badge-tests]][tests]
+<!-- [![Tests][badge-tests]][tests]
 [![Documentation][badge-docs]][documentation]
 
 [badge-tests]: https://img.shields.io/github/actions/workflow/status/emdann/pert2state_model/test.yaml?branch=main
-[badge-docs]: https://img.shields.io/readthedocs/pert2state_model
+[badge-docs]: https://img.shields.io/readthedocs/pert2state_model -->
 
-Predicting perturbations inducing target state signatures
+Reconstructing target state signatures from perturbation effects
 
 ## Getting started
 
 ## Installation
 
 You need to have Python 3.10 or newer installed on your system.
-If you don't have Python installed, we recommend installing [uv][].
+If you don't have Python installed, we recommend installing [uv][https://docs.astral.sh/uv/].
 
 
 <!--
