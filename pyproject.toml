@@ -3,7 +3,7 @@ build-backend = "hatchling.build"
 requires = [ "hatchling" ]
 
 [project]
-name = "pert2state_model"
+name = "pert2state-model"
 version = "0.0.1"
 description = "Predicting perturbations inducing target state signatures"
 readme = "README.md"
@@ -24,6 +24,11 @@ classifiers = [
 ]
 dependencies = [
   "anndata",
+  "matplotlib",
+  "numpy",
+  "pandas",
+  "scikit-learn",
+  "scipy",
   # for debug logging (referenced from the issue template)
   "session-info2",
 ]

@@ -6,14 +6,12 @@
 [badge-tests]: https://img.shields.io/github/actions/workflow/status/emdann/pert2state_model/test.yaml?branch=main
 [badge-docs]: https://img.shields.io/readthedocs/pert2state_model -->
 
-Reconstructing target state signatures from perturbation effects
-
-## Getting started
+Reconstructing target state signatures from perturbation effects ([minimal example](https://github.com/emdann/pert2state_model/blob/main/docs/notebooks/DE_polarization.ipynb))
 
 ## Installation
 
 You need to have Python 3.10 or newer installed on your system.
-If you don't have Python installed, we recommend installing [uv][https://docs.astral.sh/uv/].
+If you don't have Python installed, we recommend installing [uv](https://docs.astral.sh/uv/).
 
 
 <!--
@@ -30,21 +28,9 @@ pip install pert2state_model
 cd pert2state_model
 pip install -e .
 ```
-<!--
-## Contact
-
-For questions and help requests, you can reach out in the [scverse discourse][].
-If you found a bug, please use the [issue tracker][].
 
 ## Citation
 
-> t.b.a
+If you use this data or code in your work, please cite
 
-[uv]: https://github.com/astral-sh/uv
-[scverse discourse]: https://discourse.scverse.org/
-[issue tracker]: https://github.com/emdann/pert2state_model/issues
-[tests]: https://github.com/emdann/pert2state_model/actions/workflows/test.yaml
-[documentation]: https://pert2state_model.readthedocs.io
-[changelog]: https://pert2state_model.readthedocs.io/en/latest/changelog.html
-[api documentation]: https://pert2state_model.readthedocs.io/en/latest/api.html
-[pypi]: https://pypi.org/project/pert2state_model -->
+Zhu R., Dann E. et al. (2025) Genome-scale perturb-seq in primary human CD4+ T cells maps context-specific regulators of T cell programs and human immune traits. _bioRxiv_

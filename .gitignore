@@ -1,7 +1,9 @@
 .vscode
 
-# Data files
+# Data files (exclude large files, allow small examples)
 docs/data/
+!docs/data/*_small.csv
+!docs/data/*_small.parquet
 
 # Temp files
 .DS_Store
